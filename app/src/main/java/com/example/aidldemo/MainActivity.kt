@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
             playingService.newPlayingMusicModel(
                 PlayingMusicModel(
                     musicName = "Hello, World!!",
-                    length = 60 * 5,
+                    length = 60 * 1,
                     author = "Tans"
                 )
             )

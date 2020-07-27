@@ -1,8 +1,8 @@
 package com.example.aidldemo
 
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -23,5 +23,23 @@ class ExampleUnitTest {
                 author = "Tans"
             )
         )
+        launch {
+            task.stateChannel.asFlow()
+                .collect {
+                    println(it)
+                }
+        }
+
+        launch {
+            delay(1000)
+            task.updatePlayingState(MusicPlayingTask.PlayingState.Stop)
+            delay(1000)
+            task.updatePlayingState(MusicPlayingTask.PlayingState.Running)
+            delay(2000)
+            task.updatePlayingState(MusicPlayingTask.PlayingState.Pause)
+            delay(1000)
+            task.updatePlayingState(MusicPlayingTask.PlayingState.Running)
+        }
+        Unit
     }
 }

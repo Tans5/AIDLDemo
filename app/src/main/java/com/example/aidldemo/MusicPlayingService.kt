@@ -39,14 +39,32 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
     override fun onCreate() {
         super.onCreate()
         launch {
+            // Seconds Change
             playingTask.stateChannel.asFlow()
-                .distinctUntilChanged()
+                .distinctUntilChangedBy { it.playingSecond }
                 .collect { state ->
                     val callback: List<MusicPlayingCallback> = progressCallbacks
-                    callback.forEach {
-                        it.musicPlayingSeconds(state.playingSecond)
-                        it.musicPlaying(state.playingMusic)
-                    }
+                    callback.forEach { it.musicPlayingSeconds(state.playingSecond) }
+                }
+        }
+
+        launch {
+            // Playing State Change
+            playingTask.stateChannel.asFlow()
+                .distinctUntilChangedBy { it.playingState }
+                .collect { state ->
+                    val callback: List<MusicPlayingCallback> = progressCallbacks
+                    callback.forEach { it.currentPlayingState(state.playingState.ordinal) }
+                }
+        }
+
+        launch {
+            // Playing Music Change
+            playingTask.stateChannel.asFlow()
+                .distinctUntilChangedBy { it.playingMusic }
+                .collect { state ->
+                    val callback: List<MusicPlayingCallback> = progressCallbacks
+                    callback.forEach { it.musicPlaying(state.playingMusic) }
                 }
         }
     }
@@ -62,8 +80,9 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
 
 }
 
+@FlowPreview
 @ExperimentalCoroutinesApi
-class MusicPlayingTask(val coroutineScope: CoroutineScope) {
+class MusicPlayingTask(coroutineScope: CoroutineScope): CoroutineScope by coroutineScope {
 
     data class State(
         val playingMusic: PlayingMusicModel?,
@@ -77,10 +96,12 @@ class MusicPlayingTask(val coroutineScope: CoroutineScope) {
         Stop
     }
 
-    val stateChannel = BroadcastChannel<State>(100)
+    val stateChannel = BroadcastChannel<State>(Channel.CONFLATED)
 
     init {
-        coroutineScope.launch {
+
+        // Init Params.
+        launch {
             stateChannel.send(
                 State(
                     playingMusic = null,
@@ -89,16 +110,36 @@ class MusicPlayingTask(val coroutineScope: CoroutineScope) {
                 )
             )
         }
-    }
 
-    val jobs: MutableList<Job> = mutableListOf()
+        // Running
+        launch {
+            stateChannel.asFlow()
+                .distinctUntilChanged()
+                .filter { it.playingState == PlayingState.Running }
+                .collect {
+                    // pretend playing music.
+                    delay(1000)
+                    val latestState = stateChannel.asFlow().first()
+                    if (latestState.playingState == PlayingState.Running) {
+                        if (latestState.playingSecond + 1 == latestState.playingMusic?.length) {
+                            stateChannel.send(
+                                latestState.copy(
+                                    playingSecond = 0,
+                                    playingState = PlayingState.Stop
+                                )
+                            )
+                        } else {
+                            stateChannel.send(latestState.copy(playingSecond = latestState.playingSecond + 1))
+                        }
+                    }
+                }
+        }
+
+    }
 
     @FlowPreview
     fun startTask(newMusic: PlayingMusicModel) {
-        jobs.forEach { it.cancel() }
-        jobs.clear()
-
-        coroutineScope.launch {
+        launch {
             stateChannel.send(
                 State(
                     playingMusic = newMusic,
@@ -106,51 +147,20 @@ class MusicPlayingTask(val coroutineScope: CoroutineScope) {
                     playingSecond = 0
                 )
             )
-        }.let { jobs.add(it) }
-
-        // Running
-        coroutineScope.launch {
-            stateChannel.asFlow()
-                .distinctUntilChanged()
-                .filter { it.playingMusic != null && it.playingState == PlayingState.Running }
-                .collect { oldState ->
-                    // pretend playing music.
-                    delay(1000)
-                    launch {
-                        if (oldState.playingSecond + 1 == oldState.playingMusic?.length) {
-                            stateChannel.send(oldState.copy(playingSecond = 0, playingState = PlayingState.Stop))
-                        } else {
-                            stateChannel.send(oldState.copy(playingSecond = oldState.playingSecond + 1))
-                        }
-                    }
-                }
-        }.let { jobs.add(it) }
-
-        // Stop
-        coroutineScope.launch {
-            stateChannel.asFlow()
-                .distinctUntilChangedBy { it.playingState }
-                .filter { it.playingState == PlayingState.Stop }
-                .collect { oldState ->
-                    launch {
-                        stateChannel.send(oldState.copy(playingSecond = 0))
-                    }
-                }
-
-        }.let { jobs.add(it) }
+        }
     }
 
     @FlowPreview
-    fun getCurrentPlayingState(): PlayingState = runBlocking(coroutineScope.coroutineContext) { stateChannel.asFlow().first().playingState }
+    fun getCurrentPlayingState(): PlayingState = runBlocking(coroutineContext) { stateChannel.asFlow().first().playingState }
 
     @FlowPreview
-    fun getCurrentPlayingSeconds(): Int = runBlocking(coroutineScope.coroutineContext) { stateChannel.asFlow().first().playingSecond }
+    fun getCurrentPlayingSeconds(): Int = runBlocking(coroutineContext) { stateChannel.asFlow().first().playingSecond }
 
     @FlowPreview
-    fun getCurrentPlayingMusic(): PlayingMusicModel? = runBlocking(coroutineScope.coroutineContext) { stateChannel.asFlow().first().playingMusic }
+    fun getCurrentPlayingMusic(): PlayingMusicModel? = runBlocking(coroutineContext) { stateChannel.asFlow().first().playingMusic }
 
     @FlowPreview
-    fun updatePlayingState(playingState: PlayingState) = runBlocking(coroutineScope.coroutineContext) {
+    fun updatePlayingState(playingState: PlayingState) = runBlocking(coroutineContext) {
         val oldState = stateChannel.asFlow().first()
         if (playingState == PlayingState.Stop) {
             stateChannel.send(oldState.copy(playingState = playingState, playingSecond = 0))
