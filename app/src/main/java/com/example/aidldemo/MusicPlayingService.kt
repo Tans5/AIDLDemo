@@ -24,7 +24,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
             playingTask.startTask(newMusic)
         }
 
-        override fun start() { playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Pause) }
+        override fun start() { playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Running) }
 
         override fun stop() { playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Stop) }
 
