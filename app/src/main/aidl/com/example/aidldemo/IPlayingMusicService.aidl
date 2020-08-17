@@ -16,7 +16,9 @@ interface IPlayingMusicService {
 
     void start();
 
-    void setProgressCallback(MusicPlayingCallback callback);
+    void addProgressCallback(MusicPlayingCallback callback);
+
+    void removeProgressCallback(long callbackId);
 
     void newPlayingMusicModel(inout PlayingMusicModel newMusic);
 

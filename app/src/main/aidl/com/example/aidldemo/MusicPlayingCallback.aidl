@@ -9,4 +9,6 @@ interface MusicPlayingCallback {
     void musicPlaying(inout PlayingMusicModel newMusic);
 
     void currentPlayingState(int playingState);
+
+    long callbackId();
 }
