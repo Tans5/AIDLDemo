@@ -4,9 +4,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import kotlinx.coroutines.*
@@ -68,8 +72,72 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
 
     }
 
+    val broadcastReceiver = object : BroadcastReceiver() {
+
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == PAUSE_OR_START_BROADCAST_ACTION) {
+                launch {
+                    val state = playingTask.stateChannel.asFlow().firstOrNull()
+                    if (state?.playingMusic != null) {
+                        when (state.playingState) {
+                            MusicPlayingTask.PlayingState.Running -> {
+                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Pause)
+                            }
+                            MusicPlayingTask.PlayingState.Pause -> {
+                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Stop)
+                            }
+                            MusicPlayingTask.PlayingState.Stop -> {
+                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Pause)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
     override fun onCreate() {
         super.onCreate()
+
+        registerReceiver(broadcastReceiver, IntentFilter(PAUSE_OR_START_BROADCAST_ACTION))
+
+        val notificationManager = getSystemService<NotificationManager>()
+        val remoteSmallViews = RemoteViews(this.packageName, R.layout.playing_music_notification_small_layout)
+        val remoteExpandedViews = RemoteViews(this.packageName, R.layout.playing_music_notification_expanded_layout)
+        if (notificationManager != null) {
+            val notificationID = Random(System.currentTimeMillis()).nextInt(1, 1000)
+
+            val notificationIntent = PendingIntent.getActivity(this, 0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT)
+
+            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!notificationManager.notificationChannels.any { it.id == DEFAULT_NOTIFICATION_CHANNEL_ID }) {
+                    notificationManager.createNotificationChannel(NotificationChannel(DEFAULT_NOTIFICATION_CHANNEL_ID, DEFAULT_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT))
+                }
+                NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentIntent(notificationIntent)
+                    .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                    .setCustomContentView(remoteSmallViews)
+                    .setCustomBigContentView(remoteExpandedViews)
+                    .build()
+            } else {
+                NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentIntent(notificationIntent)
+                    .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                    .setCustomContentView(remoteSmallViews)
+                    .setCustomBigContentView(remoteExpandedViews)
+                    .build()
+            }
+            startForeground(notificationID, notification)
+        }
+
+        remoteExpandedViews.setOnClickPendingIntent(R.id.control_iv, PendingIntent.getBroadcast(this, 0, Intent(
+            PAUSE_OR_START_BROADCAST_ACTION), PendingIntent.FLAG_UPDATE_CURRENT))
+
         launch {
             // Seconds Change
             playingTask.stateChannel.asFlow()
@@ -85,6 +153,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
             playingTask.stateChannel.asFlow()
                 .distinctUntilChangedBy { it.playingState }
                 .collect { state ->
+                    remoteExpandedViews.setImageViewResource(R.id.control_iv, if (state.playingState == MusicPlayingTask.PlayingState.Running) R.drawable.pause else R.drawable.play)
                     val callback: List<MusicPlayingCallback> = progressCallbacks
                     callback.forEach { it.currentPlayingState(state.playingState.ordinal) }
                 }
@@ -100,35 +169,6 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
                 }
         }
 
-
-        val notificationManager = getSystemService<NotificationManager>()
-        if (notificationManager != null) {
-            val notificationID = Random(System.currentTimeMillis()).nextInt(1, 1000)
-
-            val notificationIntent = PendingIntent.getActivity(this, 0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT)
-
-            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (!notificationManager.notificationChannels.any { it.id == DEFAULT_NOTIFICATION_CHANNEL_ID }) {
-                    notificationManager.createNotificationChannel(NotificationChannel(DEFAULT_NOTIFICATION_CHANNEL_ID, DEFAULT_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT))
-                }
-                NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentTitle("Hello, World!!")
-                    .setContentText("Hello, World!!")
-                    .setContentIntent(notificationIntent)
-                    .build()
-            } else {
-                NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentTitle("Hello, World!!")
-                    .setContentText("Hello, World!!")
-                    .setContentIntent(notificationIntent)
-                    .build()
-            }
-            startForeground(notificationID, notification)
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -137,12 +177,14 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(broadcastReceiver)
         cancel()
     }
 
     companion object {
         const val DEFAULT_NOTIFICATION_CHANNEL_ID = "music_playing_service_channel_id"
         const val DEFAULT_NOTIFICATION_CHANNEL_NAME = "music_playing_service_channel_name"
+        const val PAUSE_OR_START_BROADCAST_ACTION = "pause_or_start_broadcast_action"
     }
 
 }

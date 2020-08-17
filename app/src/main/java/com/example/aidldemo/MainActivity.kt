@@ -105,7 +105,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
             launch {
                 musicPlayingCallback.musicPlayingSecondsChannel.asFlow()
                     .collect { seconds ->
-                        println("Seconds: $seconds")
                         val playingSong = musicPlayingCallback.musicPlayingChannel.asFlow().first()
                         if (playingSong != null) {
                             song_playing_pb.progress =
@@ -130,11 +129,11 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                             println("Music Name: ${playingMusic.musicName}")
                             song_name_tv.text = playingMusic.musicName
                             author_name_tv.text = playingMusic.author
-                            control_bt.visibility = View.VISIBLE
+                            control_iv.visibility = View.VISIBLE
                         } else {
                             song_name_tv.text = ""
                             author_name_tv.text = ""
-                            control_bt.visibility = View.GONE
+                            control_iv.visibility = View.INVISIBLE
                         }
                     }
             }
@@ -143,14 +142,14 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                 musicPlayingCallback.playingStateChannel.asFlow()
                     .collect { state ->
                         if (state != MusicPlayingTask.PlayingState.Running) {
-                            control_bt.text = "Start"
+                            control_iv.setImageResource(R.drawable.play)
                         } else {
-                            control_bt.text = "Pause"
+                            control_iv.setImageResource(R.drawable.pause)
                         }
                     }
             }
 
-            control_bt.setOnClickListener {
+            control_iv.setOnClickListener {
                 launch(Dispatchers.IO) {
                     val currentState = musicPlayingCallback.playingStateChannel.asFlow().first()
                     if (currentState == MusicPlayingTask.PlayingState.Running) {
