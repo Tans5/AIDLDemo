@@ -15,6 +15,7 @@
         android:layout_marginStart="12dp"
         android:layout_marginTop="10dp"
         android:textSize="16sp"
+        android:textColor="@color/text_grey"
         tools:text="Hello, World!" />
 
     <TextView
@@ -23,6 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:textSize="12sp"
+        android:textColor="@color/text_grey"
         tools:text="Tans" />
 
     <ProgressBar
@@ -47,6 +49,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="start|center_vertical"
             android:layout_marginStart="12dp"
+            android:textColor="@color/text_grey"
+            android:textSize="12sp"
             tools:text="01:00" />
 
 
@@ -66,6 +70,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="end|center_vertical"
             android:layout_marginEnd="12dp"
+            android:textColor="@color/text_grey"
+            android:textSize="12sp"
             tools:text="05:00" />
 
     </FrameLayout>
