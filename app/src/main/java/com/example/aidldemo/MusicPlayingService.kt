@@ -1,21 +1,17 @@
 package com.example.aidldemo
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
+import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BroadcastChannel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlin.random.Random
 
@@ -76,7 +72,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
 
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == PAUSE_OR_START_BROADCAST_ACTION) {
-                launch {
+                launch(Dispatchers.IO) {
                     val state = playingTask.stateChannel.asFlow().firstOrNull()
                     if (state?.playingMusic != null) {
                         when (state.playingState) {
@@ -84,7 +80,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
                                 playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Pause)
                             }
                             MusicPlayingTask.PlayingState.Pause -> {
-                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Stop)
+                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Running)
                             }
                             MusicPlayingTask.PlayingState.Stop -> {
                                 playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Pause)
@@ -96,53 +92,31 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
         }
 
     }
+    val notificationManager: NotificationManager by lazy { getSystemService<NotificationManager>()!! }
+    val notificationID: Int by lazy { Random(System.currentTimeMillis()).nextInt(1, 1000) }
+    val notificationAndViews by lazy { createNotificationAndRemoteViews() }
+    val notification by lazy { notificationAndViews.first }
+    val remoteSmallViews by lazy { notificationAndViews.second }
+    val remoteExpandViews by lazy { notificationAndViews.third }
 
     override fun onCreate() {
         super.onCreate()
 
         registerReceiver(broadcastReceiver, IntentFilter(PAUSE_OR_START_BROADCAST_ACTION))
-
-        val notificationManager = getSystemService<NotificationManager>()
-        val remoteSmallViews = RemoteViews(this.packageName, R.layout.playing_music_notification_small_layout)
-        val remoteExpandedViews = RemoteViews(this.packageName, R.layout.playing_music_notification_expanded_layout)
-        if (notificationManager != null) {
-            val notificationID = Random(System.currentTimeMillis()).nextInt(1, 1000)
-
-            val notificationIntent = PendingIntent.getActivity(this, 0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT)
-
-            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (!notificationManager.notificationChannels.any { it.id == DEFAULT_NOTIFICATION_CHANNEL_ID }) {
-                    notificationManager.createNotificationChannel(NotificationChannel(DEFAULT_NOTIFICATION_CHANNEL_ID, DEFAULT_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT))
-                }
-                NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentIntent(notificationIntent)
-                    .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                    .setCustomContentView(remoteSmallViews)
-                    .setCustomBigContentView(remoteExpandedViews)
-                    .build()
-            } else {
-                NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentIntent(notificationIntent)
-                    .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-                    .setCustomContentView(remoteSmallViews)
-                    .setCustomBigContentView(remoteExpandedViews)
-                    .build()
-            }
-            startForeground(notificationID, notification)
-        }
-
-        remoteExpandedViews.setOnClickPendingIntent(R.id.control_iv, PendingIntent.getBroadcast(this, 0, Intent(
-            PAUSE_OR_START_BROADCAST_ACTION), PendingIntent.FLAG_UPDATE_CURRENT))
-
+        startForeground(notificationID, notification)
         launch {
             // Seconds Change
             playingTask.stateChannel.asFlow()
+                .filter { it.playingMusic != null }
                 .distinctUntilChangedBy { it.playingSecond }
                 .collect { state ->
+                    remoteExpandViews.setProgressBar(R.id.song_playing_pb, state.playingMusic!!.length, state.playingSecond, false)
+                    remoteExpandViews.setViewVisibility(R.id.song_playing_pb, View.VISIBLE)
+                    remoteExpandViews.setTextViewText(R.id.playing_time_tv, "${(state.playingSecond / 60).toString()
+                        .padStart(2, '0')}:${(state.playingSecond % 60).toString().padStart(2, '0')}")
+                    remoteExpandViews.setTextViewText(R.id.song_duration_tv, "${(state.playingMusic.length / 60).toString()
+                        .padStart(2, '0')}:${(state.playingMusic.length % 60).toString().padStart(2, '0')}")
+                    notificationManager.notify(notificationID, notification)
                     val callback: List<MusicPlayingCallback> = progressCallbacks
                     callback.forEach { it.musicPlayingSeconds(state.playingSecond) }
                 }
@@ -151,9 +125,13 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
         launch {
             // Playing State Change
             playingTask.stateChannel.asFlow()
+                .filter { it.playingMusic != null }
                 .distinctUntilChangedBy { it.playingState }
                 .collect { state ->
-                    remoteExpandedViews.setImageViewResource(R.id.control_iv, if (state.playingState == MusicPlayingTask.PlayingState.Running) R.drawable.pause else R.drawable.play)
+                    remoteExpandViews.setImageViewResource(R.id.control_iv,
+                        if (state.playingState == MusicPlayingTask.PlayingState.Running) R.drawable.pause else R.drawable.play)
+                    remoteExpandViews.setViewVisibility(R.id.control_iv, View.VISIBLE)
+                    notificationManager.notify(notificationID, notification)
                     val callback: List<MusicPlayingCallback> = progressCallbacks
                     callback.forEach { it.currentPlayingState(state.playingState.ordinal) }
                 }
@@ -162,8 +140,14 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
         launch {
             // Playing Music Change
             playingTask.stateChannel.asFlow()
+                .filter { it.playingMusic != null }
                 .distinctUntilChangedBy { it.playingMusic }
                 .collect { state ->
+                    remoteExpandViews.setTextViewText(R.id.song_name_tv, state.playingMusic?.musicName ?: "")
+                    remoteExpandViews.setTextViewText(R.id.author_name_tv, state.playingMusic?.author ?: "")
+                    remoteSmallViews.setTextViewText(R.id.song_name_tv, state.playingMusic?.musicName ?: "")
+                    remoteSmallViews.setTextViewText(R.id.author_name_tv, state.playingMusic?.author ?: "")
+                    notificationManager.notify(notificationID, notification)
                     val callback: List<MusicPlayingCallback> = progressCallbacks
                     callback.forEach { it.musicPlaying(state.playingMusic) }
                 }
@@ -181,6 +165,47 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
         cancel()
     }
 
+    fun createNotificationAndRemoteViews(): Triple<Notification, RemoteViews, RemoteViews> {
+        val remoteSmallViews = RemoteViews(this.packageName, R.layout.playing_music_notification_small_layout)
+        val remoteExpandedViews = RemoteViews(this.packageName, R.layout.playing_music_notification_expanded_layout)
+        remoteExpandedViews.setOnClickPendingIntent(R.id.control_iv, PendingIntent.getBroadcast(this, 0, Intent(
+            PAUSE_OR_START_BROADCAST_ACTION), PendingIntent.FLAG_UPDATE_CURRENT))
+        val notificationIntent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!notificationManager.notificationChannels.any { it.id == DEFAULT_NOTIFICATION_CHANNEL_ID }) {
+                notificationManager.createNotificationChannel(
+                    NotificationChannel(
+                        DEFAULT_NOTIFICATION_CHANNEL_ID,
+                        DEFAULT_NOTIFICATION_CHANNEL_NAME,
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    )
+                )
+            }
+            NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(notificationIntent)
+                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(remoteSmallViews)
+                .setCustomBigContentView(remoteExpandedViews)
+                .setNotificationSilent()
+                .build()
+        } else {
+            NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(notificationIntent)
+                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(remoteSmallViews)
+                .setCustomBigContentView(remoteExpandedViews)
+                .setNotificationSilent()
+                .build()
+        }
+        return Triple(notification, remoteSmallViews, remoteExpandedViews)
+    }
+
     companion object {
         const val DEFAULT_NOTIFICATION_CHANNEL_ID = "music_playing_service_channel_id"
         const val DEFAULT_NOTIFICATION_CHANNEL_NAME = "music_playing_service_channel_name"
@@ -189,96 +214,3 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
 
 }
 
-@FlowPreview
-@ExperimentalCoroutinesApi
-class MusicPlayingTask(coroutineScope: CoroutineScope): CoroutineScope by coroutineScope {
-
-    data class State(
-        val playingMusic: PlayingMusicModel?,
-        val playingState: PlayingState,
-        val playingSecond: Int
-    )
-
-    enum class PlayingState {
-        Running,
-        Pause,
-        Stop
-    }
-
-    val stateChannel = BroadcastChannel<State>(Channel.CONFLATED)
-
-    init {
-
-        // Init Params.
-        launch {
-            stateChannel.send(
-                State(
-                    playingMusic = null,
-                    playingState = PlayingState.Stop,
-                    playingSecond = 0
-                )
-            )
-        }
-
-        // Running
-        launch {
-            stateChannel.asFlow()
-                .distinctUntilChanged()
-                .filter { it.playingState == PlayingState.Running }
-                .collect {
-                    // pretend playing music.
-                    delay(1000)
-                    val latestState = stateChannel.asFlow().first()
-                    if (latestState.playingMusic != null) {
-                        if (latestState.playingState == PlayingState.Running) {
-                            if (latestState.playingSecond + 1 == latestState.playingMusic.length) {
-                                stateChannel.send(
-                                    latestState.copy(
-                                        playingSecond = 0,
-                                        playingState = PlayingState.Stop
-                                    )
-                                )
-                            } else {
-                                stateChannel.send(latestState.copy(playingSecond = latestState.playingSecond + 1))
-                            }
-                        }
-                    }
-                }
-        }
-
-    }
-
-    @FlowPreview
-    fun startTask(newMusic: PlayingMusicModel) {
-        launch {
-            stateChannel.send(
-                State(
-                    playingMusic = newMusic,
-                    playingState = PlayingState.Running,
-                    playingSecond = 0
-                )
-            )
-        }
-    }
-
-    @FlowPreview
-    fun getCurrentPlayingState(): PlayingState? = runBlocking(coroutineContext) { stateChannel.asFlow().firstOrNull()?.playingState }
-
-    @FlowPreview
-    fun getCurrentPlayingSeconds(): Int? = runBlocking(coroutineContext) { stateChannel.asFlow().firstOrNull()?.playingSecond }
-
-    @FlowPreview
-    fun getCurrentPlayingMusic(): PlayingMusicModel? = runBlocking(coroutineContext) { stateChannel.asFlow().firstOrNull()?.playingMusic }
-
-    @FlowPreview
-    fun updatePlayingState(playingState: PlayingState) = runBlocking(coroutineContext) {
-        val oldState = stateChannel.asFlow().first()
-        if (playingState == PlayingState.Stop) {
-            stateChannel.send(oldState.copy(playingState = playingState, playingSecond = 0))
-        } else {
-            stateChannel.send(oldState.copy(playingState = playingState))
-        }
-    }
-
-
-}

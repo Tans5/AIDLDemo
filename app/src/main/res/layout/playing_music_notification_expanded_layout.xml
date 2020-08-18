@@ -32,6 +32,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp"
+        android:visibility="invisible"
+        tools:visibility="visible"
         tools:progress="50" />
 
     <FrameLayout
@@ -53,7 +55,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center|center_vertical"
-            android:src="@drawable/play" />
+            android:src="@drawable/play"
+            android:visibility="invisible"
+            tools:visibility="visible"/>
 
 
         <TextView

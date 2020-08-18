@@ -20,47 +20,6 @@ import kotlinx.coroutines.flow.first
 import kotlin.coroutines.resume
 
 
-@ExperimentalCoroutinesApi
-@FlowPreview
-class BroadcastMusicPlayingCallback(coroutineScope: CoroutineScope) : MusicPlayingCallback.Stub(), CoroutineScope by coroutineScope {
-
-    val callbackId = System.currentTimeMillis()
-
-    val playingStateChannel: BroadcastChannel<MusicPlayingTask.PlayingState> = BroadcastChannel(Channel.CONFLATED)
-
-    val musicPlayingSecondsChannel: BroadcastChannel<Int> = BroadcastChannel(Channel.CONFLATED)
-
-    val musicPlayingChannel: BroadcastChannel<PlayingMusicModel?> = BroadcastChannel(Channel.CONFLATED)
-
-    override fun currentPlayingState(playingState: Int) {
-        launch {
-            val state = when (playingState) {
-                MusicPlayingTask.PlayingState.Running.ordinal -> MusicPlayingTask.PlayingState.Running
-                MusicPlayingTask.PlayingState.Stop.ordinal -> MusicPlayingTask.PlayingState.Stop
-                MusicPlayingTask.PlayingState.Pause.ordinal -> MusicPlayingTask.PlayingState.Pause
-                else -> null
-            }
-            if (state != null) {
-                playingStateChannel.send(state)
-            }
-        }
-    }
-
-    override fun musicPlayingSeconds(seconds: Int) {
-        launch {
-            musicPlayingSecondsChannel.send(seconds)
-            println("Has send seconds: $seconds!!!")
-        }
-    }
-
-    override fun musicPlaying(newMusic: PlayingMusicModel?) {
-        launch { musicPlayingChannel.send(newMusic) }
-    }
-
-    override fun callbackId(): Long = callbackId
-
-}
-
 suspend fun Activity.bindServiceSuspend(intent: Intent, flags: Int): Triple<ComponentName?, IBinder?, ServiceConnection> = suspendCancellableCoroutine { cont ->
     this.bindService(intent, object : ServiceConnection {
 
@@ -79,7 +38,7 @@ suspend fun Activity.bindServiceSuspend(intent: Intent, flags: Int): Triple<Comp
 @FlowPreview
 class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispatchers.Main) {
 
-    val musicPlayingCallback: BroadcastMusicPlayingCallback = BroadcastMusicPlayingCallback(this)
+    val musicPlayingCallback: ChannelMusicPlayingCallback = ChannelMusicPlayingCallback(this)
 
     var playingServiceConnection: ServiceConnection? = null
 
