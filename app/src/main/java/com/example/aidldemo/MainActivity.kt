@@ -1,22 +1,28 @@
 package com.example.aidldemo
 
+import android.Manifest
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.IBinder
 import android.view.View
+import com.tans.rxutils.QueryMediaItem
+import com.tans.rxutils.QueryMediaType
+import com.tans.rxutils.getMedia
+import com.tbruyelle.rxpermissions2.RxPermissions
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BroadcastChannel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.rx2.await
 import kotlin.coroutines.resume
 
 
@@ -87,7 +93,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                         if (playingMusic != null) {
                             println("Music Name: ${playingMusic.musicName}")
                             song_name_tv.text = playingMusic.musicName
-                            author_name_tv.text = playingMusic.author
+                            author_name_tv.text = playingMusic.artist
                             control_iv.visibility = View.VISIBLE
                         } else {
                             song_name_tv.text = ""
@@ -123,10 +129,46 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                 launch {
                     withContext(Dispatchers.IO) {
                         playingService.newPlayingMusicModel(PlayingMusicModel(musicName = "Hello, World!",
-                            length = 60 * 5, author = "Tans"))
+                            length = 60 * 5, artist = "Tans", id = 999, albums = "", uri = Uri.Builder().authority("file").path("/123/22").build(), track = 2, mimeType = ""))
                     }
                 }
             }
+
+//            launch {
+//                val isGrant = RxPermissions(this@MainActivity)
+//                    .request(Manifest.permission.READ_EXTERNAL_STORAGE)
+//                    .firstOrError()
+//                    .await()
+//                if (isGrant) {
+//                    val musicModels = withContext(Dispatchers.IO) {
+//                        getMedia(context = this@MainActivity, queryMediaType = QueryMediaType.Audio)
+//                            .map {
+//                                it.mapNotNull { e ->
+//                                    if (e is QueryMediaItem.Audio) {
+//                                        val mmr = MediaMetadataRetriever()
+//                                        mmr.setDataSource(this@MainActivity, e.uri)
+//                                        val length = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) ?: ""
+//                                        PlayingMusicModel(
+//                                            id = e.id,
+//                                            musicName = e.displayName,
+//                                            length =  length.toIntOrNull() ?: 0,
+//                                            artist = e.artist,
+//                                            albums = e.album,
+//                                            uri = e.uri,
+//                                            track = e.track,
+//                                            mimeType = e.mimeType
+//                                        )
+//                                    } else {
+//                                        null
+//                                    }
+//                                }
+//                            }
+//                            .await()
+//                    }
+//
+//                    println("len: ${musicModels.size}")
+//                }
+//            }
         }
     }
 

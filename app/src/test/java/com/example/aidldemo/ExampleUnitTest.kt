@@ -5,8 +5,6 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import org.junit.Test
 
-import org.junit.Assert.*
-
 /**
  * Example local unit test, which will execute on the development machine (host).
  *
@@ -20,7 +18,7 @@ class ExampleUnitTest {
             PlayingMusicModel(
                 musicName = "Hello, World",
                 length = 300,
-                author = "Tans"
+                artist = "Tans"
             )
         )
         launch {

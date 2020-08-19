@@ -161,9 +161,9 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
                 .distinctUntilChangedBy { it.playingMusic }
                 .collect { state ->
                     remoteExpandViews.setTextViewText(R.id.song_name_tv, state.playingMusic?.musicName ?: "")
-                    remoteExpandViews.setTextViewText(R.id.author_name_tv, state.playingMusic?.author ?: "")
+                    remoteExpandViews.setTextViewText(R.id.author_name_tv, state.playingMusic?.artist ?: "")
                     remoteSmallViews.setTextViewText(R.id.song_name_tv, state.playingMusic?.musicName ?: "")
-                    remoteSmallViews.setTextViewText(R.id.author_name_tv, state.playingMusic?.author ?: "")
+                    remoteSmallViews.setTextViewText(R.id.author_name_tv, state.playingMusic?.artist ?: "")
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                         notificationManager.notify(notificationID, notification)
                     } else {

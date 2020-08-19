@@ -32,6 +32,9 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    dataBinding {
+        enabled = true
+    }
 }
 
 dependencies {
@@ -47,4 +50,17 @@ dependencies {
 
     implementation deps.coroutines.runtime
     implementation deps.coroutines.android
+    implementation deps.coroutines.rx
+
+    implementation deps.rxutils.runtime
+
+    implementation deps.glide.runtime
+
+    implementation deps.tadapter.runtime
+
+    implementation deps.rxpermissions.runtime
+
+    implementation deps.rxJava.runtime
+    implementation deps.rxJava.kotlin
+    implementation deps.rxAndroid.runtime
 }
