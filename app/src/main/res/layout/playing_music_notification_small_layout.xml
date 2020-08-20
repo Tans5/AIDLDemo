@@ -16,6 +16,8 @@
         android:layout_marginBottom="10dp"
         android:textSize="16sp"
         android:textColor="@color/text_grey"
+        android:maxLines="1"
+        android:ellipsize="end"
         tools:text="Hello, World!" />
 
     <TextView
@@ -23,6 +25,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:maxLines="1"
+        android:ellipsize="end"
         android:textSize="12sp"
         android:textColor="@color/text_grey"
         tools:text="Tans" />

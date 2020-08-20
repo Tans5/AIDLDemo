@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="data"
+            type="com.example.aidldemo.PlayingMusicModel" />
+    </data>
+
+    <FrameLayout
+        android:id="@+id/music_item_root_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:foreground="?attr/selectableItemBackgroundBorderless">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white">
+
+            <TextView
+                android:id="@+id/display_name_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/text_grey"
+                android:textSize="16sp"
+                android:layout_marginStart="12dp"
+                android:text="@{data.musicName}"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/artist_tv"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                tools:text="312312313131321313122313123123131231231313123121312313131311313131"/>
+
+            <TextView
+                android:id="@+id/artist_tv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:maxLines="1"
+                android:textColor="@color/text_grey"
+                android:textSize="12sp"
+                android:layout_marginStart="10dp"
+                android:text="@{data.artist}"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/display_name_tv"
+                app:layout_constraintWidth_default="wrap"
+                app:layout_constraintWidth_max="100dp"
+                app:layout_constraintHorizontal_chainStyle="spread"
+                tools:text="ttttttttttttttttttttttttttttttttttttttttttttttttttt"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </FrameLayout>
+
+</layout>

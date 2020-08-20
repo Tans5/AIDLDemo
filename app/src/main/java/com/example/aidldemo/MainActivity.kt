@@ -6,23 +6,30 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.IBinder
 import android.view.View
+import androidx.core.content.ContextCompat
+import com.example.aidldemo.databinding.MusicItemLayoutBinding
 import com.tans.rxutils.QueryMediaItem
 import com.tans.rxutils.QueryMediaType
 import com.tans.rxutils.getMedia
+import com.tans.tadapter.adapter.DifferHandler
+import com.tans.tadapter.recyclerviewutils.MarginDividerItemDecoration
+import com.tans.tadapter.recyclerviewutils.ignoreLastDividerController
+import com.tans.tadapter.spec.SimpleAdapterSpec
+import com.tans.tadapter.spec.toAdapter
 import com.tbruyelle.rxpermissions2.RxPermissions
+import io.reactivex.Observable
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.rx2.await
+import kotlinx.coroutines.rx2.rxSingle
 import kotlin.coroutines.resume
 
 
@@ -125,50 +132,63 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                 }
             }
 
-            play_hello_world_bt.setOnClickListener {
-                launch {
-                    withContext(Dispatchers.IO) {
-                        playingService.newPlayingMusicModel(PlayingMusicModel(musicName = "Hello, World!",
-                            length = 60 * 5, artist = "Tans", id = 999, albums = "", uri = Uri.Builder().authority("file").path("/123/22").build(), track = 2, mimeType = ""))
+            launch {
+                val isGrant = RxPermissions(this@MainActivity)
+                    .request(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    .firstOrError()
+                    .await()
+                if (isGrant) {
+                    val musicModels = withContext(Dispatchers.IO) {
+                        getMedia(context = this@MainActivity, queryMediaType = QueryMediaType.Audio)
+                            .map {
+                                it.mapNotNull { e ->
+                                    if (e is QueryMediaItem.Audio) {
+                                        PlayingMusicModel(
+                                            id = e.id,
+                                            musicName = e.displayName,
+                                            length =  0,
+                                            artist = e.artist,
+                                            albums = e.album,
+                                            uri = e.uri,
+                                            track = e.track,
+                                            mimeType = e.mimeType
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+                            .await()
                     }
+                    audio_rv.adapter = SimpleAdapterSpec<PlayingMusicModel, MusicItemLayoutBinding>(
+                        layoutId = R.layout.music_item_layout,
+                        bindData = { _, model, bind -> bind.data = model },
+                        dataUpdater = Observable.just(musicModels),
+                        differHandler = DifferHandler(itemsTheSame = { d1, d2 -> d1.id == d2.id }),
+                        itemClicks = listOf { binding, _ ->
+                            binding.musicItemRootLayout to { _, data ->
+                                rxSingle(Dispatchers.IO) {
+                                    data.length = 60
+                                    playingService.newPlayingMusicModel(data)
+                                }
+                            }
+                        }
+                    ).toAdapter()
+                    audio_rv.addItemDecoration(
+                        MarginDividerItemDecoration.Companion.Builder()
+                            .divider(
+                                MarginDividerItemDecoration.Companion.ColorDivider(
+                                    ContextCompat.getColor(this@MainActivity, R.color.text_grey),
+                                    1
+                                )
+                            )
+                            .marginStart(30)
+                            .dividerDirection(MarginDividerItemDecoration.Companion.DividerDirection.Horizontal)
+                            .dividerController(ignoreLastDividerController)
+                            .build()
+                    )
                 }
             }
-
-//            launch {
-//                val isGrant = RxPermissions(this@MainActivity)
-//                    .request(Manifest.permission.READ_EXTERNAL_STORAGE)
-//                    .firstOrError()
-//                    .await()
-//                if (isGrant) {
-//                    val musicModels = withContext(Dispatchers.IO) {
-//                        getMedia(context = this@MainActivity, queryMediaType = QueryMediaType.Audio)
-//                            .map {
-//                                it.mapNotNull { e ->
-//                                    if (e is QueryMediaItem.Audio) {
-//                                        val mmr = MediaMetadataRetriever()
-//                                        mmr.setDataSource(this@MainActivity, e.uri)
-//                                        val length = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) ?: ""
-//                                        PlayingMusicModel(
-//                                            id = e.id,
-//                                            musicName = e.displayName,
-//                                            length =  length.toIntOrNull() ?: 0,
-//                                            artist = e.artist,
-//                                            albums = e.album,
-//                                            uri = e.uri,
-//                                            track = e.track,
-//                                            mimeType = e.mimeType
-//                                        )
-//                                    } else {
-//                                        null
-//                                    }
-//                                }
-//                            }
-//                            .await()
-//                    }
-//
-//                    println("len: ${musicModels.size}")
-//                }
-//            }
         }
     }
 
