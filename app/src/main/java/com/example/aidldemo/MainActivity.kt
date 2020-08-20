@@ -6,11 +6,13 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.IBinder
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.aidldemo.databinding.MusicItemLayoutBinding
 import com.tans.rxutils.QueryMediaItem
@@ -101,11 +103,27 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                             println("Music Name: ${playingMusic.musicName}")
                             song_name_tv.text = playingMusic.musicName
                             author_name_tv.text = playingMusic.artist
-                            control_iv.visibility = View.VISIBLE
+                            music_playing_layout.visibility = View.VISIBLE
+
+                            val bitmap = withContext(Dispatchers.IO) {
+                                val mmr = MediaMetadataRetriever()
+                                mmr.setDataSource(this@MainActivity, playingMusic.uri)
+                                val picByteArray = mmr.embeddedPicture
+                                if (picByteArray == null) {
+                                    BitmapFactory.decodeResource(resources, R.drawable.play)
+                                } else {
+                                    BitmapFactory.decodeByteArray(
+                                        picByteArray,
+                                        0,
+                                        picByteArray.size
+                                    )
+                                }
+                            }
+                            album_iv.setImageBitmap(bitmap)
                         } else {
                             song_name_tv.text = ""
                             author_name_tv.text = ""
-                            control_iv.visibility = View.INVISIBLE
+                            music_playing_layout.visibility = View.INVISIBLE
                         }
                     }
             }
