@@ -86,6 +86,7 @@ class MusicPlayingTask(val coroutineScope: CoroutineScope): CoroutineScope by co
                 if (coroutineScope is Context) {
                     if (player.isPlaying) {
                         player.stop()
+                        player.seekTo(0)
                     }
                     player.reset()
                     player.setAudioAttributes(AudioAttributes.Builder().setLegacyStreamType(AudioManager.STREAM_MUSIC).build())
@@ -123,7 +124,10 @@ class MusicPlayingTask(val coroutineScope: CoroutineScope): CoroutineScope by co
             when (playingState) {
                 PlayingState.Running -> {
                     if (!player.isPlaying) {
-                        val result = runCatching { player.start() }
+                        val result = runCatching {
+                            if (oldState.playingState == PlayingState.Stop) { player.seekTo(0) }
+                            player.start()
+                        }
                         if (result.isSuccess) {
                             stateChannel.send(oldState.copy(playingState = PlayingState.Running))
                         }

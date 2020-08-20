@@ -83,7 +83,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
                                 playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Running)
                             }
                             MusicPlayingTask.PlayingState.Stop -> {
-                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Pause)
+                                playingTask.updatePlayingState(MusicPlayingTask.PlayingState.Running)
                             }
                         }
                     }
@@ -205,6 +205,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
             }
             NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.play)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(notificationIntent)
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setCustomContentView(remoteSmallViews)
@@ -213,6 +214,7 @@ class MusicPlayingService : Service(), CoroutineScope by CoroutineScope(Dispatch
         } else {
             NotificationCompat.Builder(this, DEFAULT_NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.play)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(notificationIntent)
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setCustomContentView(remoteSmallViews)
