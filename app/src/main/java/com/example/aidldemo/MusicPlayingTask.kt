@@ -84,6 +84,9 @@ class MusicPlayingTask(val coroutineScope: CoroutineScope): CoroutineScope by co
         launch(Dispatchers.IO) {
             val result = runCatching {
                 if (coroutineScope is Context) {
+                    if (player.isPlaying) {
+                        player.stop()
+                    }
                     player.reset()
                     player.setAudioAttributes(AudioAttributes.Builder().setLegacyStreamType(AudioManager.STREAM_MUSIC).build())
                     player.setDataSource(coroutineScope, newMusic.uri)

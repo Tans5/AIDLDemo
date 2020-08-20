@@ -106,9 +106,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope by CoroutineScope(Dispa
                             music_playing_layout.visibility = View.VISIBLE
 
                             val bitmap = withContext(Dispatchers.IO) {
-                                val mmr = MediaMetadataRetriever()
-                                mmr.setDataSource(this@MainActivity, playingMusic.uri)
-                                val picByteArray = mmr.embeddedPicture
+                                val picResult = runCatching {
+                                    val mmr = MediaMetadataRetriever()
+                                    mmr.setDataSource(this@MainActivity, playingMusic.uri)
+                                    mmr.embeddedPicture
+                                }
+                                val picByteArray = picResult.getOrNull()
                                 if (picByteArray == null) {
                                     BitmapFactory.decodeResource(resources, R.drawable.play)
                                 } else {

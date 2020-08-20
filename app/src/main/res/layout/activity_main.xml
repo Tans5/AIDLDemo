@@ -47,6 +47,7 @@
             android:layout_marginTop="10dp"
             android:elevation="10dp"
             android:visibility="invisible"
+            android:background="@color/white"
             tools:visibility="visible"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
