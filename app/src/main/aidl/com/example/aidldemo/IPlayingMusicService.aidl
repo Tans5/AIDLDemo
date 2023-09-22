@@ -18,8 +18,8 @@ interface IPlayingMusicService {
 
     void addProgressCallback(MusicPlayingCallback callback);
 
-    void removeProgressCallback(long callbackId);
+    oneway void removeProgressCallback(long callbackId);
 
-    void newPlayingMusicModel(inout PlayingMusicModel newMusic);
+    oneway void newPlayingMusicModel(in PlayingMusicModel newMusic);
 
 }

@@ -4,11 +4,11 @@ import com.example.aidldemo.PlayingMusicModel;
 
 interface MusicPlayingCallback {
 
-    void musicPlayingSeconds(int seconds);
+    oneway void musicPlayingSeconds(int seconds);
 
-    void musicPlaying(inout PlayingMusicModel newMusic);
+    oneway void musicPlaying(in PlayingMusicModel newMusic);
 
-    void currentPlayingState(int playingState);
+    oneway void currentPlayingState(int playingState);
 
     long callbackId();
 }

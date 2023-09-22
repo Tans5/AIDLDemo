@@ -21,8 +21,12 @@
             </intent-filter>
         </activity>
 
+<!--        <service android:name=".MusicPlayingService"-->
+<!--            android:exported="true"/>-->
+
         <service android:name=".MusicPlayingService"
-            android:exported="false"/>
+            android:process=":MusicPlayService"
+            android:exported="true"/>
 
     </application>
 
